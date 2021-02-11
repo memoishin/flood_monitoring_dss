@@ -30,6 +30,7 @@ def app():
     st.write("The duration, severity and intensity of all levels of floods will also be computed by this application.")
     st.write("The minimum years of data required is 10. The two columns in the csv file should be named as 'date' and 'daily_rain'.")
     st.write("Antecedent Period of 365 days is considered during the computations.")
+    st.write("If you will be running multiple computations, please refresh the webpage after you have downloaded the results for each.")
 
     antecedent_period = 365
     weight = 0

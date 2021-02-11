@@ -27,6 +27,7 @@ def app():
     st.write("The WRI for 24, 48, 72, and 96 hours will be computed by this application.")
     st.write("The three columns in the csv file should be named as 'date', 'hour', and 'rain'.")
     st.write("Please ensure there are no missing values in the dataset.")
+    st.write("If you will be running multiple computations, please refresh the webpage after you have downloaded the results for each.")
 
     wri_uploaded_file = st.file_uploader("Choose a file")
     if wri_uploaded_file is not None:
@@ -50,7 +51,14 @@ def app():
 
         new_weight = weight
 
+        f = 0
+        latest_iteration = st.sidebar.empty()
+        bar = st.sidebar.progress(0)
         for i in range(antecedent_period - 1, len(df.index), 1):
+            f = f + 1
+            latest_iteration.text(f'Iteration {f}')
+            bar.progress((f/len(df.index)))
+
             df["wri_24"][i] = 0
             for j in range(i, i - antecedent_period, -1):
                 if(itr == 0):
@@ -78,7 +86,14 @@ def app():
 
         new_weight = weight
 
+        f = 0
+        latest_iteration = st.sidebar.empty()
+        bar = st.sidebar.progress(0)
         for i in range(antecedent_period - 1, len(df.index), 1):
+            f = f + 1
+            latest_iteration.text(f'Iteration {f}')
+            bar.progress((f/len(df.index)))
+
             df["wri_48"][i] = 0
             for j in range(i, i - antecedent_period, -1):
                 if(itr == 0):
@@ -106,7 +121,14 @@ def app():
 
         new_weight = weight
 
+        f = 0
+        latest_iteration = st.sidebar.empty()
+        bar = st.sidebar.progress(0)
         for i in range(antecedent_period - 1, len(df.index), 1):
+            f = f + 1
+            latest_iteration.text(f'Iteration {f}')
+            bar.progress((f/len(df.index)))
+
             df["wri_72"][i] = 0
             for j in range(i, i - antecedent_period, -1):
                 if(itr == 0):
@@ -134,7 +156,14 @@ def app():
 
         new_weight = weight
 
+        f = 0
+        latest_iteration = st.sidebar.empty()
+        bar = st.sidebar.progress(0)
         for i in range(antecedent_period - 1, len(df.index), 1):
+            f = f + 1
+            latest_iteration.text(f'Iteration {f}')
+            bar.progress((f/len(df.index)))
+
             df["wri_96"][i] = 0
             for j in range(i, i - antecedent_period, -1):
                 if(itr == 0):
@@ -152,3 +181,20 @@ def app():
         st.write("Computations Completed")
         st.write(df)
         st.markdown(get_table_download_link(df), unsafe_allow_html=True)
+
+        # Results Visualization
+
+        st.write("24 Hour WRI Trend")
+        plt.rcParams.update({'font.size': 15})
+        res = df.drop(df.index[0:96])
+        res = res.reset_index(drop=True)
+
+        fig, ax1 = plt.subplots(figsize=(10, 5))
+        x_points = np.linspace(1, len(res.index), len(res.index))
+        ax1.set_xlabel("Hours since" + " " + res["date"][0])
+        ax1.set_ylabel('24 Hour WRI', color="black")
+        ax1.plot(x_points, res['wri_24'], color="g")
+        ax1.tick_params(axis='y', labelcolor="black")
+
+        fig.tight_layout() 
+        st.pyplot(fig)
