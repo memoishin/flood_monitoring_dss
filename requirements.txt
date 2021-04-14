@@ -4,3 +4,4 @@ pandas==0.*
 matplotlib==3.*
 tensorflow==2.4.1
 sklearn
+hydroerr
