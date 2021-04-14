@@ -32,6 +32,8 @@ def app():
     st.write("Antecedent Period of 365 days is considered during the computations.")
     st.write("If you will be running multiple computations, please refresh the webpage after you have downloaded the results for each.")
 
+    start_computation = False
+    st.sidebar.title('Computation Details')
     antecedent_period = 365
     weight = 0
     for x in range (1, antecedent_period + 1, 1):
@@ -54,459 +56,527 @@ def app():
         df['awri'] = 0.0
         df['fi'] = 0.0
 
+        start_date = st.date_input("Choose Computation Start Date", datetime.strptime(start_date, "%d/%m/%Y").date())
+        end_date = st.date_input("Choose Computation End Date", datetime.strptime(end_date, "%d/%m/%Y").date())
 
-        st.sidebar.write("Deriving Day, Month and Year")
-        latest_iteration = st.sidebar.empty()
-        bar = st.sidebar.progress(0)
-        i = 0
-        for index, row in df.iterrows():
-            temp_date = datetime.strptime(row["date"], "%d/%m/%Y").date()
-            df["year"][index] = temp_date.year
-            df['month'][index] = temp_date.month
-            df['day'][index] = temp_date.day
-            i = i + 1
-            latest_iteration.text(f'Iteration {i}')
-            bar.progress((i/len(df.index)))
+        if st.button("Click Here to Start Computation using Selected Dates"):
+            start_computation = True
 
-        
-        st.sidebar.write("Making Adjustments for Leap Year")
-        leap_indexes = []
-        i = 0
-        latest_iteration = st.sidebar.empty()
-        bar = st.sidebar.progress(0)
-        for index, row in df.iterrows():
-            i = i + 1
-            latest_iteration.text(f'Iteration {i}')
-            bar.progress((i/len(df.index)))
-            
-            if(df["day"][index] == 29 and df["month"][index] == 2):
-                df["daily_rain"][index + 1] = df["daily_rain"][index] + df["daily_rain"][index + 1]
-                leap_indexes.append(index)
-        
-        df = df.drop(leap_indexes) 
-        df = df.reset_index(drop=True)
-        
-        total_years = int(len(df.index)/days_in_year)
-        st.sidebar.write("Total Years of Data = ", total_years)
-
-        if(total_years < 10):
-            st.write("Atleast 10 Years of Data is Needed. Please upload data file that meets this requirement.")
-        else:     
-            st.sidebar.write("Calculating Missing Values")
-            start_date = datetime.strptime(start_date, "%d/%m/%Y").date()
-            current_year = start_date.year - 1
-            raw_data = np.zeros(shape=(total_years, days_in_year))
-            row = -1
-            col = -1
-            i = 0
+        if(start_computation == True):
+            st.sidebar.write("Deriving Day, Month and Year")
             latest_iteration = st.sidebar.empty()
             bar = st.sidebar.progress(0)
-            for index, r in df.iterrows():
+            i = 0
+            for index, row in df.iterrows():
+                temp_date = datetime.strptime(row["date"], "%d/%m/%Y").date()
+                df["year"][index] = temp_date.year
+                df['month'][index] = temp_date.month
+                df['day'][index] = temp_date.day
                 i = i + 1
                 latest_iteration.text(f'Iteration {i}')
                 bar.progress((i/len(df.index)))
-                if(df["year"][index] == current_year):
-                    col = col + 1
-                    if(math.isnan(df["daily_rain"][index])):
-                        raw_data[row, col] = -1
-                    else:
-                        raw_data[row, col] = df["daily_rain"][index]
-                else:
-                    current_year = df["year"][index]
-                    col = 0
-                    row = row + 1
-                    if(math.isnan(df["daily_rain"][index])):
-                        raw_data[row, col] = -1
-                    else:
-                        raw_data[row, col] = df["daily_rain"][index]
+
+            start_date_index = df.index[(df["year"] == start_date.year) & (df["month"] == start_date.month) & (df["day"] == start_date.day)].tolist()
+            end_date_index = df.index[(df["year"] == end_date.year) & (df["month"] == end_date.month) & (df["day"] == end_date.day)].tolist()
+
+            df = df[start_date_index[0]:end_date_index[0] + 1]
+            df = df.reset_index(drop=True)
             
-            current_year = start_date.year - 1
-            row = -1
-            col = -1
-            num_negatives = 0
+            st.sidebar.write("Making Adjustments for Leap Year")
+            leap_indexes = []
             i = 0
             latest_iteration = st.sidebar.empty()
             bar = st.sidebar.progress(0)
-            for index, r in df.iterrows():
+            for index, row in df.iterrows():
                 i = i + 1
                 latest_iteration.text(f'Iteration {i}')
                 bar.progress((i/len(df.index)))
-                if(df["year"][index] == current_year):
-                    col = col + 1
-                    if(math.isnan(df["daily_rain"][index])):
-                        for j in range (total_years):
-                            if(raw_data[j, col] == -1):
-                                num_negatives = num_negatives + 1
-                        df["daily_rain"][index] = (sum(raw_data[:, col]) + num_negatives)/(total_years-num_negatives)
-                        num_negatives = 0
-                else:
-                    current_year = df["year"][index]
-                    col = 0
-                    row = row + 1
-                    if(math.isnan(df["daily_rain"][index])):
-                        for j in range (total_years):
-                            if(raw_data[j, col] == -1):
-                                num_negatives = num_negatives + 1
-                        df["daily_rain"][index] = (sum(raw_data[:, col]) + num_negatives)/(total_years-num_negatives)
-                        num_negatives = 0
-
-            st.sidebar.write("Calculating Effective Precipitation")
+                
+                if(df["day"][index] == 29 and df["month"][index] == 2):
+                    df["daily_rain"][index + 1] = df["daily_rain"][index] + df["daily_rain"][index + 1]
+                    leap_indexes.append(index)
             
-            o = 0
-            i = 0
-            latest_iteration = st.sidebar.empty()
-            bar = st.sidebar.progress(0)
-            p = 0
-            z = 0
-            for i in range(antecedent_period, len(df.index), 1):
-                o = o + 1
-                latest_iteration.text(f'Iteration {o}')
-                bar.progress((o/(len(df.index) - antecedent_period)))
-                for j in range(i, i - antecedent_period, -1):
-                    for k in range(i, j-1, -1):
-                        p = p + df["daily_rain"][k]
-                        z = z + 1
-                    if(i <= len(df.index)):
-                        df["ep"][i] = df["ep"][i] + p/z
-                    p = 0
-                    z = 0
-
-            st.sidebar.write("Calculating Available Water Resource Index")
+            df = df.drop(leap_indexes) 
+            df = df.reset_index(drop=True)
             
-            o = 0
-            latest_iteration = st.sidebar.empty()
-            bar = st.sidebar.progress(0)
-            for c in range(antecedent_period, len(df.index), 1):
-                o = o + 1
-                latest_iteration.text(f'Iteration {o}')
-                bar.progress((o/(len(df.index) - antecedent_period)))
-                df["awri"][c] = df["ep"][c] / weight
+            total_years = int(len(df.index)/days_in_year)
+            st.sidebar.write("Total Years of Data = ", total_years)
 
-            st.sidebar.write("Calculating Flood Index")
+            if(total_years < min_total_years):
+                st.write("Atleast 10 Years of Data is Needed. Please upload data file that meets this requirement.")
+            else:     
+                st.sidebar.write("Calculating Missing Values")
+                current_year = start_date.year - 1
+                raw_data = np.zeros(shape=(total_years, days_in_year))
+                row = -1
+                col = -1
+                i = 0
+                latest_iteration = st.sidebar.empty()
+                bar = st.sidebar.progress(0)
+                for index, r in df.iterrows():
+                    i = i + 1
+                    latest_iteration.text(f'Iteration {i}')
+                    bar.progress((i/len(df.index)))
+                    if(df["year"][index] == current_year):
+                        col = col + 1
+                        if(math.isnan(df["daily_rain"][index])):
+                            raw_data[row, col] = -1
+                        else:
+                            raw_data[row, col] = df["daily_rain"][index]
+                    else:
+                        current_year = df["year"][index]
+                        col = 0
+                        row = row + 1
+                        if(math.isnan(df["daily_rain"][index])):
+                            raw_data[row, col] = -1
+                        else:
+                            raw_data[row, col] = df["daily_rain"][index]
+                
+                current_year = start_date.year - 1
+                row = -1
+                col = -1
+                num_negatives = 0
+                i = 0
+                latest_iteration = st.sidebar.empty()
+                bar = st.sidebar.progress(0)
+                for index, r in df.iterrows():
+                    i = i + 1
+                    latest_iteration.text(f'Iteration {i}')
+                    bar.progress((i/len(df.index)))
+                    if(df["year"][index] == current_year):
+                        col = col + 1
+                        if(math.isnan(df["daily_rain"][index])):
+                            for j in range (total_years):
+                                if(raw_data[j, col] == -1):
+                                    num_negatives = num_negatives + 1
+                            df["daily_rain"][index] = (sum(raw_data[:, col]) + num_negatives)/(total_years-num_negatives)
+                            num_negatives = 0
+                    else:
+                        current_year = df["year"][index]
+                        col = 0
+                        row = row + 1
+                        if(math.isnan(df["daily_rain"][index])):
+                            for j in range (total_years):
+                                if(raw_data[j, col] == -1):
+                                    num_negatives = num_negatives + 1
+                            df["daily_rain"][index] = (sum(raw_data[:, col]) + num_negatives)/(total_years-num_negatives)
+                            num_negatives = 0
 
-            current_year = start_date.year + 1
-            years_max = np.linspace(0, 0, total_years-1)
-            yr = 0
-            for y in range(antecedent_period, len(df.index), 1):
-                if(df["year"][y] == current_year):
-                    if(df["ep"][y] > years_max[yr]):
+                st.sidebar.write("Calculating Effective Precipitation")
+                
+                o = 0
+                i = 0
+                latest_iteration = st.sidebar.empty()
+                bar = st.sidebar.progress(0)
+                p = 0
+                z = 0
+                for i in range(antecedent_period, len(df.index), 1):
+                    o = o + 1
+                    latest_iteration.text(f'Iteration {o}')
+                    bar.progress((o/(len(df.index) - antecedent_period)))
+                    for j in range(i, i - antecedent_period, -1):
+                        for k in range(i, j-1, -1):
+                            p = p + df["daily_rain"][k]
+                            z = z + 1
+                        if(i <= len(df.index)):
+                            df["ep"][i] = df["ep"][i] + p/z
+                        p = 0
+                        z = 0
+
+                st.sidebar.write("Calculating Available Water Resource Index")
+                
+                o = 0
+                latest_iteration = st.sidebar.empty()
+                bar = st.sidebar.progress(0)
+                for c in range(antecedent_period, len(df.index), 1):
+                    o = o + 1
+                    latest_iteration.text(f'Iteration {o}')
+                    bar.progress((o/(len(df.index) - antecedent_period)))
+                    df["awri"][c] = df["ep"][c] / weight
+
+                st.sidebar.write("Calculating Flood Index")
+
+                current_year = start_date.year + 1
+                years_max = np.linspace(0, 0, total_years-1)
+                yr = 0
+                for y in range(antecedent_period, len(df.index), 1):
+                    if(df["year"][y] == current_year):
+                        if(df["ep"][y] > years_max[yr]):
+                            years_max[yr] = df["ep"][y]
+                    else:
+                        yr = yr + 1
+                        current_year = df["year"][y]
                         years_max[yr] = df["ep"][y]
-                else:
-                    yr = yr + 1
-                    current_year = df["year"][y]
-                    years_max[yr] = df["ep"][y]
 
-            for x in range(antecedent_period, len(df.index), 1):
-                df["fi"][x] = (df["ep"][x] - np.mean(years_max))/statistics.stdev(years_max)
+                for x in range(antecedent_period, len(df.index), 1):
+                    df["fi"][x] = (df["ep"][x] - np.mean(years_max))/statistics.stdev(years_max)
 
-            # Maximum Yearly Precipitation
-            current_year = start_date.year + 1
-            p_years_max = np.linspace(0, 0, total_years-1)
-            yr = 0
-            for y in range(antecedent_period, len(df.index), 1):
-                if(df["year"][y] == current_year):
-                    if(df["daily_rain"][y] > p_years_max[yr]):
+                # Maximum Yearly Precipitation
+                current_year = start_date.year + 1
+                p_years_max = np.linspace(0, 0, total_years-1)
+                yr = 0
+                for y in range(antecedent_period, len(df.index), 1):
+                    if(df["year"][y] == current_year):
+                        if(df["daily_rain"][y] > p_years_max[yr]):
+                            p_years_max[yr] = df["daily_rain"][y]
+                    else:
+                        yr = yr + 1
+                        current_year = df["year"][y]
                         p_years_max[yr] = df["daily_rain"][y]
-                else:
-                    yr = yr + 1
-                    current_year = df["year"][y]
-                    p_years_max[yr] = df["daily_rain"][y]
 
-            # Peak Danger Yearly
-            current_year = start_date.year + 1
-            i_years_max = np.linspace(0, 0, total_years-1)
-            yr = 0
-            for y in range(antecedent_period, len(df.index), 1):
-                if(df["year"][y] == current_year):
-                    if(df["fi"][y] > i_years_max[yr]):
+                # Peak Danger Yearly
+                current_year = start_date.year + 1
+                i_years_max = np.linspace(0, 0, total_years-1)
+                yr = 0
+                for y in range(antecedent_period, len(df.index), 1):
+                    if(df["year"][y] == current_year):
+                        if(df["fi"][y] > i_years_max[yr]):
+                            i_years_max[yr] = df["fi"][y]
+                    else:
+                        yr = yr + 1
+                        current_year = df["year"][y]
                         i_years_max[yr] = df["fi"][y]
-                else:
-                    yr = yr + 1
-                    current_year = df["year"][y]
-                    i_years_max[yr] = df["fi"][y]
-    
-            st.write("Flood Index Successfully Calculated")
-            st.write(df)
+        
+                st.write("Flood Index Successfully Calculated")
+                st.write(df)
 
-            # Flood Index        
-            st.markdown(get_table_download_link(df), unsafe_allow_html=True)  
+                # Flood Index        
+                st.markdown(get_table_download_link(df), unsafe_allow_html=True)  
 
-            plt.rcParams.update({'font.size': 15})
-            res = df.drop(df.index[0:365])
-            res = res.reset_index(drop=True)
+                plt.rcParams.update({'font.size': 18, 'font.family': 'Arial'})
+                res = df.drop(df.index[0:365])
+                res = res.reset_index(drop=True)
 
-            # Results Visualization
+                # Results Visualization
 
-            st.write("Daily Flood Index and Rainfall Trend")
+                st.write("Daily Flood Index and Rainfall Trend")
 
-            fig, ax1 = plt.subplots(figsize=(10, 5))
-            x_points = np.linspace(1, len(res.index), len(res.index))
+                fig, ax1 = plt.subplots(figsize=(15, 5))
+                x_points = np.linspace(1, len(res.index), len(res.index))
 
-            ax1.axhline(linewidth=1, color='r')
-            ax1.axhline(y=1, linewidth=0.5, linestyle='--', color='grey')
-            ax1.axhline(y=1.5, linewidth=0.5, linestyle='--', color='grey')
-            ax1.axhline(y=2, linewidth=0.5, linestyle='--', color='grey')
-            ax1.set_xlabel("Days since" + " " + res["date"][0])
-            ax1.set_ylabel('Flood Index', color="black")
-            ax1.plot(x_points, res['fi'], color="blue")
-            ax1.tick_params(axis='y', labelcolor="black")
+                ax1.axhline(linewidth=1, color='r')
+                ax1.axhline(y=1, linewidth=0.5, linestyle='--', color='grey')
+                ax1.axhline(y=1.5, linewidth=0.5, linestyle='--', color='grey')
+                ax1.axhline(y=2, linewidth=0.5, linestyle='--', color='grey')
+                ax1.set_xlabel("Days since" + " " + res["date"][0])
+                ax1.set_ylabel('Flood Index', color="black")
+                ax1.plot(x_points, res['fi'], color="blue")
+                ax1.tick_params(axis='y', labelcolor="black")
 
-            ax2 = ax1.twinx()  
+                ax2 = ax1.twinx()  
 
-            ax2.set_ylabel('Precipitation (mm)', color="black")  
-            ax2.bar(x_points, res['daily_rain'], color="grey")
-            ax2.tick_params(axis='y', labelcolor="black")
+                ax2.set_ylabel('Precipitation (mm)', color="black")  
+                ax2.bar(x_points, res['daily_rain'], color="grey")
+                ax2.tick_params(axis='y', labelcolor="black")
 
-            fig.tight_layout() 
-            st.pyplot(fig)
+                fig.tight_layout() 
+                st.pyplot(fig)
 
-            st.write("Daily AWRI and Rainfall Trend")
+                st.write("Daily AWRI and Rainfall Trend")
 
-            fig2, ax3 = plt.subplots(figsize=(10, 5))
-            x_points = np.linspace(1, len(res.index), len(res.index))
+                fig2, ax3 = plt.subplots(figsize=(15, 5))
+                x_points = np.linspace(1, len(res.index), len(res.index))
 
-            ax3.set_xlabel("Days since" + " " + res["date"][0])
-            ax3.set_ylabel('AWRI', color="black")
-            ax3.plot(x_points, res['awri'], color="blue")
-            ax3.tick_params(axis='y', labelcolor="black")
+                ax3.set_xlabel("Days since" + " " + res["date"][0])
+                ax3.set_ylabel('AWRI', color="black")
+                ax3.plot(x_points, res['awri'], color="blue")
+                ax3.tick_params(axis='y', labelcolor="black")
 
-            ax4 = ax3.twinx()  
+                ax4 = ax3.twinx()  
 
-            ax4.set_ylabel('Precipitation (mm)', color="black")  
-            ax4.bar(x_points, res['daily_rain'], color="grey")
-            ax4.tick_params(axis='y', labelcolor="black")
+                ax4.set_ylabel('Precipitation (mm)', color="black")  
+                ax4.bar(x_points, res['daily_rain'], color="grey")
+                ax4.tick_params(axis='y', labelcolor="black")
 
-            fig2.tight_layout() 
-            st.pyplot(fig2)
+                fig2.tight_layout() 
+                st.pyplot(fig2)
 
-            # Further Analysis
+                # Further Analysis
 
-            st.sidebar.write("Computing Duration, Severity and Intensity of All Floods")
+                st.sidebar.write("Computing Duration, Severity and Intensity of All Floods")
 
-            # Identifying all floods
-            flood = pd.DataFrame(columns=["onset", "end", "start_day", "start_month", "start_year", "end_day", "end_month", "end_year", "duration", "severity", "awri", "precipitation", "max_awri", "peak_severity"])
-            num_floods = -1
-            flood_state = False
-            for y in range(antecedent_period, len(df.index), 1):
-                if(df["fi"][y] > 0):
-                    if(flood_state == False):
-                        flood_state = True
-                        num_floods = num_floods + 1
-                        flood = flood.append({'onset': int(y), 'start_day': int(df['day'][y]), 'start_month': int(df['month'][y]), 'start_year': int(df['year'][y])}, ignore_index=True)
-                
-                if(df["fi"][y] <= 0):
-                    if(flood_state == True):
-                        flood_state = False
-                        flood['end'][num_floods] = int(y - 1)
-                        flood['end_day'][num_floods] = int(df['day'][y-1])
-                        flood['end_month'][num_floods] = int(df['month'][y-1])
-                        flood['end_year'][num_floods] = int(df['year'][y-1])
-                        flood['duration'][num_floods] = int(y - flood['onset'][num_floods])
+                num_all_floods = 0
 
-            t_severity = 0
-            peak_sev = 0
-            t_awri = 0
-            t_prec = 0
-            t_awri_max = 0
+                # Identifying all floods
+                flood = pd.DataFrame(columns=["onset", "end", "start_day", "start_month", "start_year", "end_day", "end_month", "end_year", "duration", "severity", "awri", "precipitation", "max_awri", "peak_severity"])
+                num_floods = -1
+                flood_state = False
+                for y in range(antecedent_period, len(df.index), 1):
+                    if(df["fi"][y] > 0):
+                        if(flood_state == False):
+                            flood_state = True
+                            num_floods = num_floods + 1
+                            flood = flood.append({'onset': int(y), 'start_day': int(df['day'][y]), 'start_month': int(df['month'][y]), 'start_year': int(df['year'][y])}, ignore_index=True)
+                            num_all_floods = num_all_floods + 1
 
-            for i in range(0, len(flood.index), 1):
-                for j in range (int(flood['onset'][i]), int(flood['end'][i] + 1), 1):
-                    t_severity = df['fi'][j] + t_severity
-                    t_awri = df['awri'][j] + t_awri
-                    t_prec = df['daily_rain'][j] + t_prec
-                    
-                    if(df['awri'][j] > t_awri_max):
-                        t_awri_max = df['awri'][j]
-                    
-                    if(df['fi'][j] > peak_sev):
-                        peak_sev = df['fi'][j]
+                    if(df["fi"][y] <= 0):
+                        if(flood_state == True):
+                            flood_state = False
+                            flood['end'][num_floods] = int(y - 1)
+                            flood['end_day'][num_floods] = int(df['day'][y-1])
+                            flood['end_month'][num_floods] = int(df['month'][y-1])
+                            flood['end_year'][num_floods] = int(df['year'][y-1])
+                            flood['duration'][num_floods] = int(y - flood['onset'][num_floods])
 
-                flood['severity'][i] = t_severity
-                flood['awri'][i] = t_awri
-                flood['precipitation'][i] = t_prec
-                flood['max_awri'][i] = t_awri_max
-                flood['peak_severity'][i] = peak_sev
-                
                 t_severity = 0
                 peak_sev = 0
                 t_awri = 0
                 t_prec = 0
                 t_awri_max = 0
 
-            
-            st.write("Duration, Severity and Intensity of All Floods Determined")
-            st.write(flood)
-            st.markdown(get_table_download_link(flood), unsafe_allow_html=True) 
+                for i in range(0, len(flood.index), 1):
+                    for j in range (int(flood['onset'][i]), int(flood['end'][i] + 1), 1):
+                        t_severity = df['fi'][j] + t_severity
+                        t_awri = df['awri'][j] + t_awri
+                        t_prec = df['daily_rain'][j] + t_prec
+                        
+                        if(df['awri'][j] > t_awri_max):
+                            t_awri_max = df['awri'][j]
+                        
+                        if(df['fi'][j] > peak_sev):
+                            peak_sev = df['fi'][j]
 
-            st.sidebar.write("Computing Duration, Severity and Intensity of Moderate Floods")
-
-            # Identifying Moderate Floods
-            flood = pd.DataFrame(columns=["onset", "end", "start_day", "start_month", "start_year", "end_day", "end_month", "end_year", "duration", "severity", "awri", "precipitation", "max_awri", "peak_severity"])
-            num_floods = -1
-            flood_state = False
-            for y in range(antecedent_period, len(df.index), 1):
-                if(df["fi"][y] >= 1):
-                    if(flood_state == False):
-                        flood_state = True
-                        num_floods = num_floods + 1
-                        flood = flood.append({'onset': int(y), 'start_day': int(df['day'][y]), 'start_month': int(df['month'][y]), 'start_year': int(df['year'][y])}, ignore_index=True)
-                
-                if(df["fi"][y] < 1):
-                    if(flood_state == True):
-                        flood_state = False
-                        flood['end'][num_floods] = int(y - 1)
-                        flood['end_day'][num_floods] = int(df['day'][y-1])
-                        flood['end_month'][num_floods] = int(df['month'][y-1])
-                        flood['end_year'][num_floods] = int(df['year'][y-1])
-                        flood['duration'][num_floods] = int(y - flood['onset'][num_floods])
-
-            t_severity = 0
-            peak_sev = 0
-            t_awri = 0
-            t_prec = 0
-            t_awri_max = 0
-
-            for i in range(0, len(flood.index), 1):
-                for j in range (int(flood['onset'][i]), int(flood['end'][i] + 1), 1):
-                    t_severity = df['fi'][j] + t_severity
-                    t_awri = df['awri'][j] + t_awri
-                    t_prec = df['daily_rain'][j] + t_prec
+                    flood['severity'][i] = t_severity
+                    flood['awri'][i] = t_awri
+                    flood['precipitation'][i] = t_prec
+                    flood['max_awri'][i] = t_awri_max
+                    flood['peak_severity'][i] = peak_sev
                     
-                    if(df['awri'][j] > t_awri_max):
-                        t_awri_max = df['awri'][j]
-                    
-                    if(df['fi'][j] > peak_sev):
-                        peak_sev = df['fi'][j]
+                    t_severity = 0
+                    peak_sev = 0
+                    t_awri = 0
+                    t_prec = 0
+                    t_awri_max = 0
 
-                flood['severity'][i] = t_severity
-                flood['awri'][i] = t_awri
-                flood['precipitation'][i] = t_prec
-                flood['max_awri'][i] = t_awri_max
-                flood['peak_severity'][i] = peak_sev
                 
+                st.write("Duration, Severity and Intensity of All Floods Determined")
+                st.write(flood)
+                st.markdown(get_table_download_link(flood), unsafe_allow_html=True) 
+
+                st.sidebar.write("Computing Duration, Severity and Intensity of Moderate Floods")
+
+                num_mod_floods = 0
+
+                # Identifying Moderate Floods
+                flood = pd.DataFrame(columns=["onset", "end", "start_day", "start_month", "start_year", "end_day", "end_month", "end_year", "duration", "severity", "awri", "precipitation", "max_awri", "peak_severity"])
+                num_floods = -1
+                flood_state = False
+                for y in range(antecedent_period, len(df.index), 1):
+                    if(df["fi"][y] >= 1):
+                        if(flood_state == False):
+                            flood_state = True
+                            num_floods = num_floods + 1
+                            flood = flood.append({'onset': int(y), 'start_day': int(df['day'][y]), 'start_month': int(df['month'][y]), 'start_year': int(df['year'][y])}, ignore_index=True)
+                            num_mod_floods = num_mod_floods + 1
+
+                    if(df["fi"][y] < 1):
+                        if(flood_state == True):
+                            flood_state = False
+                            flood['end'][num_floods] = int(y - 1)
+                            flood['end_day'][num_floods] = int(df['day'][y-1])
+                            flood['end_month'][num_floods] = int(df['month'][y-1])
+                            flood['end_year'][num_floods] = int(df['year'][y-1])
+                            flood['duration'][num_floods] = int(y - flood['onset'][num_floods])
+
                 t_severity = 0
                 peak_sev = 0
                 t_awri = 0
                 t_prec = 0
                 t_awri_max = 0
 
-            
-            st.write("Duration, Severity and Intensity of Moderate Floods Determined")
-            st.write(flood)
-            st.markdown(get_table_download_link(flood), unsafe_allow_html=True)   
+                for i in range(0, len(flood.index), 1):
+                    for j in range (int(flood['onset'][i]), int(flood['end'][i] + 1), 1):
+                        t_severity = df['fi'][j] + t_severity
+                        t_awri = df['awri'][j] + t_awri
+                        t_prec = df['daily_rain'][j] + t_prec
+                        
+                        if(df['awri'][j] > t_awri_max):
+                            t_awri_max = df['awri'][j]
+                        
+                        if(df['fi'][j] > peak_sev):
+                            peak_sev = df['fi'][j]
 
-            # Identifying Severe floods
-
-            st.sidebar.write("Computing Duration, Severity and Intensity of Severe Floods")
-
-            flood = pd.DataFrame(columns=["onset", "end", "start_day", "start_month", "start_year", "end_day", "end_month", "end_year", "duration", "severity", "awri", "precipitation", "max_awri", "peak_severity"])
-            num_floods = -1
-            flood_state = False
-            for y in range(antecedent_period, len(df.index), 1):
-                if(df["fi"][y] >= 1.5):
-                    if(flood_state == False):
-                        flood_state = True
-                        num_floods = num_floods + 1
-                        flood = flood.append({'onset': int(y), 'start_day': int(df['day'][y]), 'start_month': int(df['month'][y]), 'start_year': int(df['year'][y])}, ignore_index=True)
-                
-                if(df["fi"][y] < 1.5):
-                    if(flood_state == True):
-                        flood_state = False
-                        flood['end'][num_floods] = int(y - 1)
-                        flood['end_day'][num_floods] = int(df['day'][y-1])
-                        flood['end_month'][num_floods] = int(df['month'][y-1])
-                        flood['end_year'][num_floods] = int(df['year'][y-1])
-                        flood['duration'][num_floods] = int(y - flood['onset'][num_floods])
-
-            t_severity = 0
-            peak_sev = 0
-            t_awri = 0
-            t_prec = 0
-            t_awri_max = 0
-
-            for i in range(0, len(flood.index), 1):
-                for j in range (int(flood['onset'][i]), int(flood['end'][i] + 1), 1):
-                    t_severity = df['fi'][j] + t_severity
-                    t_awri = df['awri'][j] + t_awri
-                    t_prec = df['daily_rain'][j] + t_prec
+                    flood['severity'][i] = t_severity
+                    flood['awri'][i] = t_awri
+                    flood['precipitation'][i] = t_prec
+                    flood['max_awri'][i] = t_awri_max
+                    flood['peak_severity'][i] = peak_sev
                     
-                    if(df['awri'][j] > t_awri_max):
-                        t_awri_max = df['awri'][j]
-                    
-                    if(df['fi'][j] > peak_sev):
-                        peak_sev = df['fi'][j]
+                    t_severity = 0
+                    peak_sev = 0
+                    t_awri = 0
+                    t_prec = 0
+                    t_awri_max = 0
 
-                flood['severity'][i] = t_severity
-                flood['awri'][i] = t_awri
-                flood['precipitation'][i] = t_prec
-                flood['max_awri'][i] = t_awri_max
-                flood['peak_severity'][i] = peak_sev
                 
+                st.write("Duration, Severity and Intensity of Moderate Floods Determined")
+                st.write(flood)
+                st.markdown(get_table_download_link(flood), unsafe_allow_html=True)   
+
+                # Identifying Severe floods
+
+                st.sidebar.write("Computing Duration, Severity and Intensity of Severe Floods")
+
+                num_sev_floods = 0
+
+                flood = pd.DataFrame(columns=["onset", "end", "start_day", "start_month", "start_year", "end_day", "end_month", "end_year", "duration", "severity", "awri", "precipitation", "max_awri", "peak_severity"])
+                num_floods = -1
+                flood_state = False
+                for y in range(antecedent_period, len(df.index), 1):
+                    if(df["fi"][y] >= 1.5):
+                        if(flood_state == False):
+                            flood_state = True
+                            num_floods = num_floods + 1
+                            flood = flood.append({'onset': int(y), 'start_day': int(df['day'][y]), 'start_month': int(df['month'][y]), 'start_year': int(df['year'][y])}, ignore_index=True)
+                            num_sev_floods = num_sev_floods + 1
+
+                    if(df["fi"][y] < 1.5):
+                        if(flood_state == True):
+                            flood_state = False
+                            flood['end'][num_floods] = int(y - 1)
+                            flood['end_day'][num_floods] = int(df['day'][y-1])
+                            flood['end_month'][num_floods] = int(df['month'][y-1])
+                            flood['end_year'][num_floods] = int(df['year'][y-1])
+                            flood['duration'][num_floods] = int(y - flood['onset'][num_floods])
+
                 t_severity = 0
                 peak_sev = 0
                 t_awri = 0
                 t_prec = 0
                 t_awri_max = 0
 
-            
-            st.write("Duration, Severity and Intensity of Severe Floods Determined")
-            st.write(flood)
-            st.markdown(get_table_download_link(flood), unsafe_allow_html=True) 
+                for i in range(0, len(flood.index), 1):
+                    for j in range (int(flood['onset'][i]), int(flood['end'][i] + 1), 1):
+                        t_severity = df['fi'][j] + t_severity
+                        t_awri = df['awri'][j] + t_awri
+                        t_prec = df['daily_rain'][j] + t_prec
+                        
+                        if(df['awri'][j] > t_awri_max):
+                            t_awri_max = df['awri'][j]
+                        
+                        if(df['fi'][j] > peak_sev):
+                            peak_sev = df['fi'][j]
 
-            # Identifying Extreme floods
-            
-            st.sidebar.write("Computing Duration, Severity and Intensity of Extreme Floods")
-            
-            flood = pd.DataFrame(columns=["onset", "end", "start_day", "start_month", "start_year", "end_day", "end_month", "end_year", "duration", "severity", "awri", "precipitation", "max_awri", "peak_severity"])
-            num_floods = -1
-            flood_state = False
-            for y in range(antecedent_period, len(df.index), 1):
-                if(df["fi"][y] >= 2):
-                    if(flood_state == False):
-                        flood_state = True
-                        num_floods = num_floods + 1
-                        flood = flood.append({'onset': int(y), 'start_day': int(df['day'][y]), 'start_month': int(df['month'][y]), 'start_year': int(df['year'][y])}, ignore_index=True)
-                
-                if(df["fi"][y] < 2):
-                    if(flood_state == True):
-                        flood_state = False
-                        flood['end'][num_floods] = int(y - 1)
-                        flood['end_day'][num_floods] = int(df['day'][y-1])
-                        flood['end_month'][num_floods] = int(df['month'][y-1])
-                        flood['end_year'][num_floods] = int(df['year'][y-1])
-                        flood['duration'][num_floods] = int(y - flood['onset'][num_floods])
-
-            t_severity = 0
-            peak_sev = 0
-            t_awri = 0
-            t_prec = 0
-            t_awri_max = 0
-
-            for i in range(0, len(flood.index), 1):
-                for j in range (int(flood['onset'][i]), int(flood['end'][i] + 1), 1):
-                    t_severity = df['fi'][j] + t_severity
-                    t_awri = df['awri'][j] + t_awri
-                    t_prec = df['daily_rain'][j] + t_prec
+                    flood['severity'][i] = t_severity
+                    flood['awri'][i] = t_awri
+                    flood['precipitation'][i] = t_prec
+                    flood['max_awri'][i] = t_awri_max
+                    flood['peak_severity'][i] = peak_sev
                     
-                    if(df['awri'][j] > t_awri_max):
-                        t_awri_max = df['awri'][j]
-                    
-                    if(df['fi'][j] > peak_sev):
-                        peak_sev = df['fi'][j]
+                    t_severity = 0
+                    peak_sev = 0
+                    t_awri = 0
+                    t_prec = 0
+                    t_awri_max = 0
 
-                flood['severity'][i] = t_severity
-                flood['awri'][i] = t_awri
-                flood['precipitation'][i] = t_prec
-                flood['max_awri'][i] = t_awri_max
-                flood['peak_severity'][i] = peak_sev
                 
+                st.write("Duration, Severity and Intensity of Severe Floods Determined")
+                st.write(flood)
+                st.markdown(get_table_download_link(flood), unsafe_allow_html=True) 
+
+                # Identifying Extreme floods
+                
+                st.sidebar.write("Computing Duration, Severity and Intensity of Extreme Floods")
+
+                num_ext_floods = 0
+                
+                flood = pd.DataFrame(columns=["onset", "end", "start_day", "start_month", "start_year", "end_day", "end_month", "end_year", "duration", "severity", "awri", "precipitation", "max_awri", "peak_severity"])
+                num_floods = -1
+                flood_state = False
+                for y in range(antecedent_period, len(df.index), 1):
+                    if(df["fi"][y] >= 2):
+                        if(flood_state == False):
+                            flood_state = True
+                            num_floods = num_floods + 1
+                            flood = flood.append({'onset': int(y), 'start_day': int(df['day'][y]), 'start_month': int(df['month'][y]), 'start_year': int(df['year'][y])}, ignore_index=True)
+                            num_ext_floods = num_ext_floods + 1
+
+                    if(df["fi"][y] < 2):
+                        if(flood_state == True):
+                            flood_state = False
+                            flood['end'][num_floods] = int(y - 1)
+                            flood['end_day'][num_floods] = int(df['day'][y-1])
+                            flood['end_month'][num_floods] = int(df['month'][y-1])
+                            flood['end_year'][num_floods] = int(df['year'][y-1])
+                            flood['duration'][num_floods] = int(y - flood['onset'][num_floods])
+
                 t_severity = 0
                 peak_sev = 0
                 t_awri = 0
                 t_prec = 0
                 t_awri_max = 0
 
-            
-            st.write("Duration, Severity and Intensity of Extreme Floods Determined")
-            st.write(flood)
-            st.markdown(get_table_download_link(flood), unsafe_allow_html=True)
+                for i in range(0, len(flood.index), 1):
+                    for j in range (int(flood['onset'][i]), int(flood['end'][i] + 1), 1):
+                        t_severity = df['fi'][j] + t_severity
+                        t_awri = df['awri'][j] + t_awri
+                        t_prec = df['daily_rain'][j] + t_prec
+                        
+                        if(df['awri'][j] > t_awri_max):
+                            t_awri_max = df['awri'][j]
+                        
+                        if(df['fi'][j] > peak_sev):
+                            peak_sev = df['fi'][j]
+
+                    flood['severity'][i] = t_severity
+                    flood['awri'][i] = t_awri
+                    flood['precipitation'][i] = t_prec
+                    flood['max_awri'][i] = t_awri_max
+                    flood['peak_severity'][i] = peak_sev
+                    
+                    t_severity = 0
+                    peak_sev = 0
+                    t_awri = 0
+                    t_prec = 0
+                    t_awri_max = 0
+
+                
+                st.write("Duration, Severity and Intensity of Extreme Floods Determined")
+                st.write(flood)
+                st.markdown(get_table_download_link(flood), unsafe_allow_html=True)
+
+                st.write("Number of Floods Recorded Based on Severity")
+
+                fig3, ax5 = plt.subplots(figsize=(15, 5))
+                x_points = ["All (IF > 0)", "Moderate (IF > 1)", "Severe (IF > 1.5)", "Extreme (IF > 2)"]
+
+                ax5.set_ylabel('Number of Flood Situations', color="black")
+                ax5.bar(x_points, [num_all_floods, num_mod_floods, num_sev_floods, num_ext_floods], align="center")
+                ax5.tick_params(axis='y', labelcolor="black")
+
+                fig3.tight_layout() 
+                st.pyplot(fig3)
+
+                st.write("Maximum Yearly Peak Danger vs Precipitation")
+
+                current_year = start_date.year + 1
+                p_years_max = np.linspace(0, 0, total_years-1)
+                yr = 0
+                for y in range(antecedent_period, len(df.index), 1):
+                    if(df["year"][y] == current_year):
+                        if(df["daily_rain"][y] > p_years_max[yr]):
+                            p_years_max[yr] = df["daily_rain"][y]
+                    else:
+                        yr = yr + 1
+                        current_year = df["year"][y]
+                        p_years_max[yr] = df["daily_rain"][y]
+
+                fig4, ax6 = plt.subplots(figsize=(15, 5))
+                x_points = np.linspace(start_date.year + 1, end_date.year, total_years-1, endpoint=True)
+
+                ax6.set_xlabel("Years")
+                ax6.set_ylabel('Precipitation (mm)', color="black")  
+                ax6.bar(x_points, p_years_max, color="grey")
+                ax6.tick_params(axis='y', labelcolor="black")
+
+                ax7 = ax6.twinx()  
+                
+                ax7.set_ylabel('Flood Index', color="black")
+                ax7.plot(x_points, i_years_max, color="green")
+                ax7.tick_params(axis='y', labelcolor="black")
+                
+
+                fig4.tight_layout() 
+                st.pyplot(fig4)
+        
+                
