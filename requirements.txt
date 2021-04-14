@@ -3,3 +3,4 @@ streamlit==0.71.0
 pandas==0.*
 matplotlib==3.*
 tensorflow==2.4.1
+sklearn
