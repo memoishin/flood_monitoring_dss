@@ -177,3 +177,5 @@ def app():
         st.write("Nash Sutcliffe Efficiency Index: ", nash.round(5))
         st.write("Root Mean Squared Error: ", rmse.round(5))
         st.write("Mean Absolute Error: ", mae.round(5))
+	
+	model.save("test_model")
