@@ -10,6 +10,7 @@ def app():
     st.markdown("<h2>Related Research</h2>", unsafe_allow_html=True)
 
     st.markdown("<ol>" +
+        "<li>[NEW] Moishin, M, Deo, RC, Prasad, R, Raj, N & Abdulla, S 2021, '<a href='https://doi.org/10.1109/ACCESS.2021.3065939' target='_blank'>Designing Deep-based Learning Flood Forecast Model with ConvLSTM Hybrid Algorithm</a>', IEEE Access.</li>"
         "<li>Moishin, M, Deo, RC, Prasad, R, Raj, N & Abdulla, S 2020, '<a href='https://doi.org/10.1007/s00477-020-01899-6' target='_blank'>Development of Flood Monitoring Index for daily flood risk evaluation: case studies in Fiji</a>', Stochastic Environmental Research and Risk Assessment, pp. 1-16.</li>" +
         "<li>Deo, RC, Adamowski, JF, Begum, K, Salcedo-Sanz, S, Kim, D-W, Dayal, KS & Byun, H-R 2018, '<a href='https://doi.org/10.1007/s00704-018-2657-4'  target='_blank'>Quantifying flood events in Bangladesh with a daily-step flood monitoring index based on the concept of daily effective precipitation</a>', Theoretical and Applied Climatology, vol. 137, no. 1-2, pp. 1201-15.</li>" +
         "<li>Deo, RC, Byun, HR, Kim, GB & Adamowski, JF 2018, '<a href='https://doi.org/10.1007/s10661-018-6806-0'  target='_blank'>A real-time hourly water index for flood risk monitoring: Pilot studies in Brisbane, Australia, and Dobong Observatory, South Korea</a>', Environ Monit Assess, vol. 190, no. 8, p. 450.</li>" +
@@ -21,4 +22,4 @@ def app():
         "</ol>", unsafe_allow_html=True)
 
     st.markdown("<h3>Disclaimer</h3>", unsafe_allow_html=True)
-    st.markdown("<p>The developers and researchers of this web application do not take any responsibility for any results produced by the tools presented in the web application and are not liable for any damages caused. By using the tools, you are agreeing to have read this disclaimer.</p>", unsafe_allow_html=True)
+    st.markdown("<p>The developers and researchers of this web application do not take any responsibility for any results produced by the tools presented in the web application and are not liable for any damages caused. Please also note that support may not be available for this system but authors can be contacted for more information. In addition, the programming codes is open source (<a href='https://github.com/memoishin/flood_monitoring_dss' target='_blank'>Github Link</a>) and can be accessed by the user to fix issues or add enhancements to the system. By using the tools, you are agreeing to have read this disclaimer.</p>", unsafe_allow_html=True)

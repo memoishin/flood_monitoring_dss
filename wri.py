@@ -220,17 +220,22 @@ def app():
             st.markdown(get_table_download_link(df), unsafe_allow_html=True)
 
             # Results Visualization
-
-            st.write("24 Hour WRI Trend")
             plt.rcParams.update({'font.size': 18, 'font.family': 'Arial'})
             res = df.drop(df.index[0:96])
             res = res.reset_index(drop=True)
 
+            st.write("WRI Trends - Interactive Graph")
+                
+            ig_data = pd.DataFrame(np.column_stack((res['wri_24'], res['wri_48'], res['wri_72'], res['wri_96'],np.zeros(len(res)))), columns=['24 Hr WRI', '48 Hr WRI', '72 Hr WRI', '96 Hr WRI', ''])
+            st.line_chart(ig_data)
+
+            st.write("24 Hour WRI Trend")
+            
             fig, ax1 = plt.subplots(figsize=(15, 5))
             x_points = np.linspace(1, len(res.index), len(res.index))
             ax1.set_xlabel("Hours since" + " " + res["date"][0])
             ax1.set_ylabel('24 Hour WRI', color="black")
-            ax1.plot(x_points, res['wri_24'], color="r")
+            ax1.plot(x_points, res['wri_24'], color="midnightblue")
             ax1.tick_params(axis='y', labelcolor="black")
 
             fig.tight_layout() 
@@ -241,7 +246,7 @@ def app():
             x_points = np.linspace(1, len(res.index), len(res.index))
             ax2.set_xlabel("Hours since" + " " + res["date"][0])
             ax2.set_ylabel('48 Hour WRI', color="black")
-            ax2.plot(x_points, res['wri_48'], color="b")
+            ax2.plot(x_points, res['wri_48'], color="teal")
             ax2.tick_params(axis='y', labelcolor="black")
 
             fig2.tight_layout() 
@@ -252,7 +257,7 @@ def app():
             x_points = np.linspace(1, len(res.index), len(res.index))
             ax3.set_xlabel("Hours since" + " " + res["date"][0])
             ax3.set_ylabel('72 Hour WRI', color="black")
-            ax3.plot(x_points, res['wri_72'], color="r")
+            ax3.plot(x_points, res['wri_72'], color="firebrick")
             ax3.tick_params(axis='y', labelcolor="black")
 
             fig3.tight_layout() 
@@ -263,7 +268,7 @@ def app():
             x_points = np.linspace(1, len(res.index), len(res.index))
             ax4.set_xlabel("Hours since" + " " + res["date"][0])
             ax4.set_ylabel('96 Hour WRI', color="black")
-            ax4.plot(x_points, res['wri_96'], color="b")
+            ax4.plot(x_points, res['wri_96'], color="darkmagenta")
             ax4.tick_params(axis='y', labelcolor="black")
 
             fig4.tight_layout() 

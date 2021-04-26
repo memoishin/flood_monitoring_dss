@@ -272,6 +272,11 @@ def app():
                 fig.tight_layout() 
                 st.pyplot(fig)
 
+                st.write("Flood Index Trend - Interactive Graph")
+                
+                ig_data = pd.DataFrame(np.column_stack((res['fi'], np.zeros(len(res)))), columns=['Flood Index', ''])
+                st.line_chart(ig_data)
+
                 st.write("Daily AWRI and Rainfall Trend")
 
                 fig2, ax3 = plt.subplots(figsize=(15, 5))
